@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+
 import AIConcierge from './components/ai/AIConcierge'
 import FloatingAIButton from './components/ai/FloatingAIButton'
 import SplashScreen from './components/SplashScreen'
@@ -19,18 +20,14 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false)
   const [showSplash, setShowSplash] = useState(true)
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false)
-    }, 2500)
-
-    return () => clearTimeout(timer)
-  }, [])
-
   return (
     <BrowserRouter>
-      <AnimatePresence>
-        {showSplash && <SplashScreen />}
+      <AnimatePresence mode="wait">
+        {showSplash && (
+          <SplashScreen
+            onComplete={() => setShowSplash(false)}
+          />
+        )}
       </AnimatePresence>
 
       {!showSplash && (
@@ -47,8 +44,15 @@ export default function App() {
           </Routes>
 
           <BottomNav />
-          <FloatingAIButton onClick={() => setChatOpen(true)} />
-<AIConcierge open={chatOpen} onClose={() => setChatOpen(false)} />
+
+          <FloatingAIButton
+            onClick={() => setChatOpen(true)}
+          />
+
+          <AIConcierge
+            open={chatOpen}
+            onClose={() => setChatOpen(false)}
+          />
         </div>
       )}
     </BrowserRouter>
