@@ -13,7 +13,8 @@ export const menuItems = [
     tags: ['hot', 'classic'],
     description: 'A concentrated shot of rich, aromatic espresso.',
     image:
-      'https://images.unsplash.com/photo-1510707577719-ae7c14805e8a?auto=format&fit=crop&w=1000&q=85',
+      // 'https://images.unsplash.com/photo-1510707577719-ae7c14805e8a?auto=format&fit=crop&w=1000&q=85',
+      'https://images.pexels.com/photos/19252265/pexels-photo-19252265.jpeg?_gl=1*1fpna3h*_ga*NTAzMzM5NzA3LjE3ODcxMzkwODE.*_ga_8JE65Q40S6*czE3ODcxMzkwODEkbzEkZzEkdDE3ODcxMzkxNDYkajYwJGwwJGgw',
   },
 
   {
@@ -39,7 +40,8 @@ export const menuItems = [
     tags: ['hot', 'classic', 'creamy'],
     description: 'Velvety espresso crowned with silky milk foam.',
     image:
-      'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=1000&q=85',
+      // 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=1000&q=85',
+      'https://images.pexels.com/photos/6747870/pexels-photo-6747870.jpeg?_gl=1*s3kobz*_ga*NTAzMzM5NzA3LjE3ODcxMzkwODE.*_ga_8JE65Q40S6*czE3ODcxMzkwODEkbzEkZzEkdDE3ODcxMzkyMTgkajQ5JGwwJGgw',
   },
 
   {
@@ -91,7 +93,8 @@ export const menuItems = [
     tags: ['hot', 'signature', 'basil', 'sweet'],
     description: 'Silky latte infused with fragrant basil and floral honey.',
     image:
-      'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1000&q=85',
+      // 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=1000&q=85',
+      'https://images.pexels.com/photos/15023077/pexels-photo-15023077.jpeg?_gl=1*rwot0x*_ga*NTAzMzM5NzA3LjE3ODcxMzkwODE.*_ga_8JE65Q40S6*czE3ODcxMzkwODEkbzEkZzEkdDE3ODcxMzkzMDMkajU5JGwwJGgw',
   },
 
   {
@@ -117,7 +120,8 @@ export const menuItems = [
     tags: ['hot', 'signature', 'creamy'],
     description: 'Espresso layered with luxurious pistachio cream.',
     image:
-      'https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=1000&q=85',
+      // 'https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=1000&q=85',
+      'https://images.pexels.com/photos/18179637/pexels-photo-18179637.jpeg?_gl=1*z9wzhc*_ga*NTAzMzM5NzA3LjE3ODcxMzkwODE.*_ga_8JE65Q40S6*czE3ODcxMzkwODEkbzEkZzEkdDE3ODcxMzk0NzckajIwJGwwJGgw',
   },
 
   // =========================
@@ -199,7 +203,8 @@ export const menuItems = [
     tags: ['creamy'],
     description: 'Earthy mushrooms folded into a rich creamy sauce.',
     image:
-      'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85',
+      // 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85',
+      'https://images.pexels.com/photos/30350310/pexels-photo-30350310.jpeg?_gl=1*2kopc6*_ga*NTAzMzM5NzA3LjE3ODcxMzkwODE.*_ga_8JE65Q40S6*czE3ODcxMzkwODEkbzEkZzEkdDE3ODcxMzk2NjkkajU5JGwwJGgw',
   },
 
   {
@@ -277,7 +282,8 @@ export const menuItems = [
     tags: ['signature', 'spicy'],
     description: 'A bold coffee-inspired pasta with cracked pepper.',
     image:
-      'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85',
+      // 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85',
+      'https://images.pexels.com/photos/31261506/pexels-photo-31261506.jpeg?_gl=1*165pess*_ga*NTAzMzM5NzA3LjE3ODcxMzkwODE.*_ga_8JE65Q40S6*czE3ODcxMzkwODEkbzEkZzEkdDE3ODcxMzk3NjIkajMzJGwwJGgw',
   },
 ]
 
