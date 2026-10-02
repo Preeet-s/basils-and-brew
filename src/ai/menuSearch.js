@@ -1,77 +1,424 @@
-import { menuItems } from '../data/menuItems'
+import { menuItems } from '../data/menuItems.js'
+
+/*
+|--------------------------------------------------------------------------
+| TEXT NORMALIZATION
+|--------------------------------------------------------------------------
+|
+| Converts natural user input into a predictable form.
+|
+| Examples:
+|
+| "Pistachio Creme Latte"
+|      ↓
+| "pistachio cream latte"
+|
+| "FLAT-WHITE"
+|      ↓
+| "flat white"
+|
+| "espresso!"
+|      ↓
+| "espresso"
+|
+|--------------------------------------------------------------------------
+*/
 
 function normalize(text = '') {
   return String(text)
     .toLowerCase()
-    .replace(/[₹,]/g, '')
+    .replace(/[₹,]/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
 /*
 |--------------------------------------------------------------------------
-| Find one exact product
+| COMMON SPELLING / PHRASE NORMALIZATION
+|--------------------------------------------------------------------------
+|
+| These are intentionally conservative.
+|
+| We only normalize obvious variations that customers may naturally type.
+|
+|--------------------------------------------------------------------------
+*/
+
+function normalizeWords(text = '') {
+  let normalized = normalize(text)
+
+  const replacements = {
+    // Cream
+    creme: 'cream',
+    crème: 'cream',
+
+    // Espresso
+    expresso: 'espresso',
+
+    // Cappuccino
+    cappucino: 'cappuccino',
+    capuccino: 'cappuccino',
+
+    // Americano
+    american: 'americano',
+
+    // Pistachio
+    pistacio: 'pistachio',
+    pistachioo: 'pistachio',
+
+    // Vanilla
+    vanila: 'vanilla',
+
+    // Basil
+    basel: 'basil',
+
+    // Tomato
+    tomatos: 'tomato',
+    tomatoes: 'tomato',
+
+    // Mushroom
+    mushrooms: 'mushroom',
+
+    // Burrata
+    buratta: 'burrata',
+
+    // Alfredo
+    alfredo: 'alfredo',
+  }
+
+  for (const [wrong, correct] of Object.entries(
+    replacements
+  )) {
+    normalized = normalized.replace(
+      new RegExp(`\\b${wrong}\\b`, 'g'),
+      correct
+    )
+  }
+
+  return normalized
+}
+
+/*
+|--------------------------------------------------------------------------
+| TOKENIZE
+|--------------------------------------------------------------------------
+*/
+
+function tokenize(text = '') {
+  return normalizeWords(text)
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+/*
+|--------------------------------------------------------------------------
+| REMOVE COMMON COMMAND WORDS
+|--------------------------------------------------------------------------
+|
+| We don't want words like "add", "please", "to", "cart"
+| influencing product matching.
+|
+|--------------------------------------------------------------------------
+*/
+
+function removeCommandWords(tokens = []) {
+  const ignoredWords = new Set([
+    'add',
+    'please',
+    'put',
+    'get',
+    'give',
+    'want',
+    'order',
+    'buy',
+    'bring',
+    'send',
+    'include',
+    'place',
+    'another',
+    'some',
+    'the',
+    'a',
+    'an',
+    'to',
+    'my',
+    'cart',
+    'in',
+    'into',
+    'for',
+    'me',
+  ])
+
+  return tokens.filter(
+    (token) => !ignoredWords.has(token)
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| PRODUCT TOKEN SCORE
+|--------------------------------------------------------------------------
+|
+| Specific products should ALWAYS beat generic products.
+|
+| Example:
+|
+| "pistachio creme latte"
+|
+| Latte:
+|     latte = 1 matching token
+|
+| Pistachio Cream Latte:
+|     pistachio = match
+|     cream = match
+|     latte = match
+|
+| Therefore:
+|
+| Pistachio Cream Latte wins.
+|
+|--------------------------------------------------------------------------
+*/
+
+function scoreProduct(
+  product,
+  queryTokens
+) {
+  const productTokens =
+    tokenize(product.name)
+
+  if (!productTokens.length) {
+    return 0
+  }
+
+  let score = 0
+  let matchedTokens = 0
+
+  for (const token of productTokens) {
+    if (queryTokens.includes(token)) {
+      matchedTokens += 1
+
+      /*
+       * Product-name tokens are worth more than generic
+       * searchable text.
+       */
+      score += 10
+    }
+  }
+
+  /*
+   * Reward products where ALL name tokens match.
+   *
+   * This is the key protection against:
+   *
+   * Latte
+   *
+   * incorrectly beating:
+   *
+   * Pistachio Cream Latte
+   */
+  if (
+    matchedTokens ===
+    productTokens.length
+  ) {
+    score += 100
+  }
+
+  /*
+   * Reward longer / more specific product names.
+   */
+  score += productTokens.length * 2
+
+  return score
+}
+
+/*
+|--------------------------------------------------------------------------
+| FIND ONE PRODUCT
 |--------------------------------------------------------------------------
 */
 
 export function findProduct(text = '') {
-  const normalized = normalize(text)
+  const normalized =
+    normalizeWords(text)
 
   if (!normalized) {
     return null
   }
 
-  return [...menuItems]
-    .sort(
-      (a, b) =>
-        b.name.length - a.name.length
-    )
-    .find((item) =>
-      normalized.includes(
-        normalize(item.name)
+  /*
+   * --------------------------------------------------------------
+   * STEP 1
+   * Exact normalized product-name match
+   * --------------------------------------------------------------
+   */
+
+  const exactMatch =
+    menuItems.find((item) => {
+      const productName =
+        normalizeWords(item.name)
+
+      return (
+        normalized === productName ||
+        normalized.includes(
+          ` ${productName} `
+        ) ||
+        normalized.startsWith(
+          `${productName} `
+        ) ||
+        normalized.endsWith(
+          ` ${productName}`
+        )
       )
-    ) || null
+    })
+
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  /*
+   * --------------------------------------------------------------
+   * STEP 2
+   * Token-based scoring
+   * --------------------------------------------------------------
+   */
+
+  const queryTokens = removeCommandWords(
+    tokenize(normalized)
+  ).filter((token) => !/^\d+$/.test(token));
+
+  if (!queryTokens.length) {
+    return null;
+  }
+
+  // Match singular and plural product words without
+  // treating unrelated words as valid product matches.
+  const matchesToken = (productToken, queryToken) => {
+    if (productToken === queryToken) {
+      return true;
+    }
+
+    // latte -> lattes
+    if (
+      productToken.endsWith('e') &&
+      queryToken === `${productToken.slice(0, -1)}es`
+    ) {
+      return true;
+    }
+
+    // coffee -> coffees, cup -> cups
+    if (queryToken === `${productToken}s`) {
+      return true;
+    }
+
+    // berry -> berries
+    if (
+      productToken.endsWith('y') &&
+      queryToken === `${productToken.slice(0, -1)}ies`
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const scoredProducts = menuItems
+    .map((item) => {
+      const productTokens = tokenize(
+        normalizeWords(item.name)
+      );
+
+      const matchedTokens = productTokens.filter(
+        (productToken) =>
+          queryTokens.some((queryToken) =>
+            matchesToken(productToken, queryToken)
+          )
+      );
+
+      const score =
+        matchedTokens.length * 10 +
+        (matchedTokens.length === productTokens.length
+          ? 100
+          : 0);
+
+      return { item, score };
+    })
+    .filter((result) => result.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!scoredProducts.length) {
+    return null;
+  }
+
+  return scoredProducts[0].item;
 }
 
 /*
 |--------------------------------------------------------------------------
-| Find multiple products
+| FIND MULTIPLE PRODUCTS
 |--------------------------------------------------------------------------
 */
 
-export function findProducts(text = '') {
-  const normalized = normalize(text)
+export function findProducts(
+  text = ''
+) {
+  const normalized =
+    normalizeWords(text)
 
   if (!normalized) {
     return []
   }
 
-  return [...menuItems]
+  const queryTokens =
+    removeCommandWords(
+      tokenize(normalized)
+    )
+
+  if (!queryTokens.length) {
+    return []
+  }
+
+  return menuItems
+    .map((item) => ({
+      item,
+      score: scoreProduct(
+        item,
+        queryTokens
+      ),
+    }))
+    .filter(
+      (result) =>
+        result.score > 0
+    )
     .sort(
       (a, b) =>
-        b.name.length - a.name.length
+        b.score - a.score
     )
-    .filter((item) =>
-      normalized.includes(
-        normalize(item.name)
-      )
+    .map(
+      (result) =>
+        result.item
     )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Find by ID
+| FIND BY ID
 |--------------------------------------------------------------------------
 */
 
 export function findProductById(id) {
-  return menuItems.find(
-    (item) => item.id === id
-  ) || null
+  return (
+    menuItems.find(
+      (item) =>
+        item.id === id
+    ) || null
+  )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Find by category
+| FIND BY CATEGORY
 |--------------------------------------------------------------------------
 */
 
@@ -84,72 +431,118 @@ export function getProductsByCategory(
 
   return menuItems.filter(
     (item) =>
-      item.category.toLowerCase() ===
-      String(category).toLowerCase()
+      String(item.category || '')
+        .toLowerCase() ===
+      String(category)
+        .toLowerCase()
   )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Find by tag
+| FIND BY TAG
 |--------------------------------------------------------------------------
 */
 
-export function getProductsByTag(tag) {
+export function getProductsByTag(
+  tag
+) {
   if (!tag) {
     return []
   }
 
-  return menuItems.filter((item) =>
-    item.tags.some(
-      (itemTag) =>
-        itemTag.toLowerCase() ===
-        String(tag).toLowerCase()
-    )
+  const normalizedTag =
+    normalizeWords(tag)
+
+  return menuItems.filter(
+    (item) =>
+      Array.isArray(item.tags) &&
+      item.tags.some(
+        (itemTag) =>
+          normalizeWords(itemTag) ===
+          normalizedTag
+      )
   )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Search entire menu
+| SEARCH ENTIRE MENU
 |--------------------------------------------------------------------------
 */
 
-export function searchMenu(query = '') {
-  const normalized = normalize(query)
+export function searchMenu(
+  query = ''
+) {
+  const normalized =
+    normalizeWords(query)
 
   if (!normalized) {
     return []
   }
 
-  const terms = normalized
-    .split(/\s+/)
-    .filter(Boolean)
+  const terms =
+    removeCommandWords(
+      tokenize(normalized)
+    )
+
+  if (!terms.length) {
+    return []
+  }
 
   return menuItems
     .map((item) => {
-      const searchableText = [
-        item.name,
-        item.category,
-        item.subcategory,
-        item.description || '',
-        ...item.tags,
-      ]
-        .join(' ')
-        .toLowerCase()
+      const searchableText = normalizeWords(
+        [
+          item.name,
+          item.category,
+          item.subcategory,
+          item.description || '',
+          ...(Array.isArray(item.tags)
+            ? item.tags
+            : []),
+        ].join(' ')
+      )
 
       let score = 0
 
+      /*
+       * Product-name matches are strongest.
+       */
       for (const term of terms) {
+        const productName =
+          normalizeWords(
+            item.name
+          )
+
         if (
-          normalize(item.name).includes(term)
+          productName
+            .split(' ')
+            .includes(term)
         ) {
-          score += 5
+          score += 10
         } else if (
           searchableText.includes(term)
         ) {
           score += 1
         }
+      }
+
+      /*
+       * Strong bonus when all product-name
+       * tokens are represented in the query.
+       */
+      const productTokens =
+        tokenize(item.name)
+
+      const allTokensMatch =
+        productTokens.every(
+          (token) =>
+            terms.includes(token)
+        )
+
+      if (allTokensMatch) {
+        score += 100
       }
 
       return {
@@ -158,20 +551,22 @@ export function searchMenu(query = '') {
       }
     })
     .filter(
-      (result) => result.score > 0
+      (result) =>
+        result.score > 0
     )
     .sort(
       (a, b) =>
         b.score - a.score
     )
     .map(
-      (result) => result.item
+      (result) =>
+        result.item
     )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Products under a budget
+| PRODUCTS UNDER BUDGET
 |--------------------------------------------------------------------------
 */
 
@@ -183,7 +578,9 @@ export function getProductsUnderBudget(
     Number(budget)
 
   if (
-    !Number.isFinite(numericBudget) ||
+    !Number.isFinite(
+      numericBudget
+    ) ||
     numericBudget < 0
   ) {
     return []
@@ -195,7 +592,8 @@ export function getProductsUnderBudget(
   return menuItems
     .filter(
       (item) =>
-        item.price <= numericBudget &&
+        item.price <=
+          numericBudget &&
         !excluded.has(item.id)
     )
     .sort(
@@ -206,7 +604,7 @@ export function getProductsUnderBudget(
 
 /*
 |--------------------------------------------------------------------------
-| Products in a price range
+| PRODUCTS IN PRICE RANGE
 |--------------------------------------------------------------------------
 */
 
@@ -214,8 +612,11 @@ export function getProductsInPriceRange(
   min,
   max
 ) {
-  const minimum = Number(min)
-  const maximum = Number(max)
+  const minimum =
+    Number(min)
+
+  const maximum =
+    Number(max)
 
   if (
     !Number.isFinite(minimum) ||
@@ -238,7 +639,7 @@ export function getProductsInPriceRange(
 
 /*
 |--------------------------------------------------------------------------
-| Cheapest products
+| CHEAPEST PRODUCTS
 |--------------------------------------------------------------------------
 */
 
@@ -246,14 +647,19 @@ export function getCheapestProducts(
   category = null,
   limit = 5
 ) {
-  let products = [...menuItems]
+  let products = [
+    ...menuItems,
+  ]
 
   if (category) {
     products =
       products.filter(
         (item) =>
-          item.category.toLowerCase() ===
-          String(category).toLowerCase()
+          String(
+            item.category || ''
+          ).toLowerCase() ===
+          String(category)
+            .toLowerCase()
       )
   }
 
@@ -264,13 +670,16 @@ export function getCheapestProducts(
     )
     .slice(
       0,
-      Math.max(1, Number(limit) || 5)
+      Math.max(
+        1,
+        Number(limit) || 5
+      )
     )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Most expensive products
+| MOST EXPENSIVE PRODUCTS
 |--------------------------------------------------------------------------
 */
 
@@ -278,14 +687,19 @@ export function getMostExpensiveProducts(
   category = null,
   limit = 5
 ) {
-  let products = [...menuItems]
+  let products = [
+    ...menuItems,
+  ]
 
   if (category) {
     products =
       products.filter(
         (item) =>
-          item.category.toLowerCase() ===
-          String(category).toLowerCase()
+          String(
+            item.category || ''
+          ).toLowerCase() ===
+          String(category)
+            .toLowerCase()
       )
   }
 
@@ -296,54 +710,67 @@ export function getMostExpensiveProducts(
     )
     .slice(
       0,
-      Math.max(1, Number(limit) || 5)
+      Math.max(
+        1,
+        Number(limit) || 5
+      )
     )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Menu validation
+| MENU VALIDATION
 |--------------------------------------------------------------------------
 */
 
-export function productExists(id) {
+export function productExists(
+  id
+) {
   return menuItems.some(
-    (item) => item.id === id
+    (item) =>
+      item.id === id
   )
 }
 
 export function validateProducts(
   products = []
 ) {
-  if (!Array.isArray(products)) {
+  if (
+    !Array.isArray(products)
+  ) {
     return []
   }
 
   return products.filter(
     (product) =>
       product &&
-      productExists(product.id)
+      productExists(
+        product.id
+      )
   )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Menu names
+| MENU NAMES
 |--------------------------------------------------------------------------
 */
 
 export function getMenuNames() {
   return menuItems.map(
-    (item) => item.name
+    (item) =>
+      item.name
   )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Full menu
+| FULL MENU
 |--------------------------------------------------------------------------
 */
 
 export function getAllMenuItems() {
-  return [...menuItems]
+  return [
+    ...menuItems,
+  ]
 }

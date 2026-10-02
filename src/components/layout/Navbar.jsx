@@ -7,7 +7,6 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-
         {/* Logo */}
         <Link
           to="/"
@@ -15,34 +14,25 @@ export default function Navbar() {
           aria-label="Basils & Brew Home"
         >
           <div className="flex flex-col items-center justify-center leading-none">
-
-            {/* Logo Image */}
             <img
-              src="basils-brew-logo.png"
-              alt="Basils & Brew"
-              className="h-16 w-15 object-contain"
+              src="/basils-brew-logo.png"
+              alt="Basils & Brew logo"
+              className="h-16 w-16 object-contain"
             />
 
-            {/* Brand Name */}
             <span
-              className="mt-0.5 text-[17px] font-semibold tracking-tight text-[var(--espresso)]"
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-              }}
+              className="mt-0.5 text-2xl font-semibold tracking-tight text-[var(--espresso)]"
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}
             >
               Basils & Brew
             </span>
 
-            {/* Tagline */}
             <span
               className="mt-1 whitespace-nowrap text-[8px] font-medium uppercase tracking-[0.16em] text-gray-500"
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-              }}
+              style={{ fontFamily: "'Montserrat', sans-serif" }}
             >
               Coffee • Pasta • Concierge
             </span>
-
           </div>
         </Link>
 
@@ -65,7 +55,6 @@ export default function Navbar() {
             className="relative transition hover:text-[var(--basil)]"
           >
             Cart
-
             {totalItems > 0 && (
               <span className="absolute -right-3 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--basil)] text-xs text-white">
                 {totalItems}
@@ -77,18 +66,7 @@ export default function Navbar() {
             About
           </Link>
         </nav>
-
       </div>
     </header>
   )
 }
-
-
-
-
-
-
-
-
-
-

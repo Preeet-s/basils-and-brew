@@ -13,7 +13,9 @@ import {
   formatMeal,
 } from '../ai/mealBuilder'
 
-const API_URL = 'http://localhost:3001/api/concierge'
+const API_URL =
+  import.meta.env.VITE_CONCIERGE_API_URL ||
+  'http://localhost:3001/api/concierge'
 
 function normalize(text = '') {
   return String(text)
@@ -36,40 +38,49 @@ function formatMoney(amount) {
   return `₹${Number(amount || 0)}`
 }
 
+
 function getQuantity(text = '') {
-  const normalized = normalize(text)
+  const input = String(text).toLowerCase()
 
-  const numberMatch =
-    normalized.match(/\b(\d+)\b/)
+  // Only interpret numbers immediately associated with
+  // an explicit ordering verb as quantities.
+  const numericMatch = input.match(
+    /\b(?:add|order|buy|get|give me|i want|i'd like)\s+(?:me\s+)?(\d+)\b/i
+  )
 
-  if (numberMatch) {
-    return Math.max(
-      1,
-      Number(numberMatch[1])
-    )
-  }
+  if (numericMatch) {
+    const quantity = Number(numericMatch[1])
 
-  const words = {
-    one: 1,
-    two: 2,
-    three: 3,
-    four: 4,
-    five: 5,
-  }
-
-  for (const [word, value] of Object.entries(
-    words
-  )) {
+    // Prevent accidental or unreasonable bulk additions.
     if (
-      normalized.includes(
-        ` ${word} `
-      ) ||
-      normalized.startsWith(`${word} `)
+      Number.isInteger(quantity) &&
+      quantity >= 1 &&
+      quantity <= 20
     ) {
-      return value
+      return quantity
     }
+
+    return 1
   }
 
+  // Support written quantities such as "add two lattes".
+  const wordMatch = input.match(
+    /\b(?:add|order|buy|get|give me|i want|i'd like)\s+(?:me\s+)?(one|two|three|four|five)\b/i
+  )
+
+  if (wordMatch) {
+    const quantities = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+    }
+
+    return quantities[wordMatch[1]]
+  }
+
+  // A price or budget elsewhere in the message is not a quantity.
   return 1
 }
 
@@ -326,6 +337,20 @@ export function useAIConcierge(
   ) {
     const normalized =
       normalize(message)
+
+
+    // DELIVERY QUESTIONS ARE INFORMATIONAL, NOT ORDERS.
+    const deliveryQuestion =
+      /\b(delivery|deliver|home delivery|delivery service|delivery available)\b/i.test(message) &&
+      /\b(can i|do you|does|is there|are there|available|offer|provide|have|how|what|whether)\b/i.test(message)
+
+    if (deliveryQuestion) {
+      return {
+        handled: true,
+        reply:
+          "I can help you choose items from our menu, but I can't confirm delivery availability from the information available to me. Please check our ordering options for delivery details.",
+      }
+    }
   /*
 |--------------------------------------------------------------------------
 | ADD LAST RECOMMENDED MEAL

@@ -1,15 +1,33 @@
+import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
 
 const app = express()
 
-const PORT = 3001
-const OLLAMA_URL = 'http://localhost:11434/api/chat'
-const MODEL = 'qwen3:4b-instruct'
 
-app.use(cors())
-app.use(express.json())
+const PORT = Number(process.env.PORT) || 3001
+
+const AI_PROVIDER = process.env.AI_PROVIDER || 'ollama'
+
+const OLLAMA_URL =
+  process.env.OLLAMA_URL ||
+  'http://localhost:11434/api/chat'
+
+const OLLAMA_MODEL =
+  process.env.OLLAMA_MODEL ||
+  'qwen3:4b-instruct'
+
+const GROQ_API_URL =
+  'https://api.groq.com/openai/v1/chat/completions'
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY || ''
+const GROQ_MODEL = process.env.GROQ_MODEL || ''
+
+const MODEL =
+  AI_PROVIDER === 'groq'
+    ? GROQ_MODEL
+    : OLLAMA_MODEL
 
 // ============================================================
 // MENU
@@ -227,7 +245,8 @@ const MENU_TEXT = MENU.map(
 // HELPER
 // ============================================================
 
-function cleanAIResult(result) {
+
+function cleanAIResult(result, userMessage = '') {
   const validActions = [
     'add_to_cart',
     'remove_from_cart',
@@ -238,8 +257,42 @@ function cleanAIResult(result) {
     'chat',
   ]
 
+  const message = String(userMessage).toLowerCase()
+
+  const asksAboutDelivery =
+    /\b(delivery|deliver|home delivery)\b/i.test(message) &&
+    /\b(can i|do you|does|is there|available|offer|provide|have|how|what|whether|order)\b/i.test(message)
+
+  // An informational delivery question must not change the cart.
+  if (asksAboutDelivery && result.action === 'add_to_cart') {
+    return {
+      action: 'chat',
+      items: [],
+      reply:
+        "I can't confirm delivery availability from the information available to me. Please check our ordering options for details.",
+    }
+  }
+
+  const explicitAddIntent =
+    /\b(add|buy|purchase|include)\b/i.test(message) ||
+    /\b(order|get|give me|i want|i'd like)\b/i.test(message)
+
   if (!validActions.includes(result.action)) {
     result.action = 'chat'
+  }
+
+  // Do not allow the model to add products without a
+  // recognizable ordering request.
+  if (
+    result.action === 'add_to_cart' &&
+    !explicitAddIntent
+  ) {
+    return {
+      action: 'chat',
+      items: [],
+      reply:
+        "Tell me which menu item you'd like to add, and I'll help you with your order.",
+    }
   }
 
   if (!Array.isArray(result.items)) {
@@ -248,17 +301,21 @@ function cleanAIResult(result) {
 
   result.items = result.items
     .filter((item) =>
-      MENU.some(
-        (product) => product.id === item.id
-      )
+      MENU.some((product) => product.id === item.id)
     )
-    .map((item) => ({
-      id: item.id,
-      quantity: Math.max(
-        1,
-        Math.floor(Number(item.quantity) || 1)
-      ),
-    }))
+    .map((item) => {
+      const parsedQuantity = Number(item.quantity)
+
+      return {
+        id: item.id,
+        quantity:
+          Number.isInteger(parsedQuantity) &&
+          parsedQuantity >= 1 &&
+          parsedQuantity <= 20
+            ? parsedQuantity
+            : 1,
+      }
+    })
 
   return {
     action: result.action,
@@ -268,6 +325,7 @@ function cleanAIResult(result) {
       'How can I help with your order?',
   }
 }
+
 
 // ============================================================
 // CHAT HANDLER
@@ -728,78 +786,100 @@ FINAL RULE
 Return ONLY JSON.
 `
 
+
     // --------------------------------------------------------
-    // SEND TO OLLAMA
+    // SEND TO SELECTED AI PROVIDER
     // --------------------------------------------------------
 
-    const ollamaResponse =
-      await fetch(OLLAMA_URL, {
+    const useGroq = AI_PROVIDER === 'groq'
+
+    if (useGroq && (!GROQ_API_KEY || !GROQ_MODEL)) {
+      return res.status(500).json({
+        action: 'chat',
+        items: [],
+        reply: 'The hosted AI service is not configured yet.',
+      })
+    }
+
+    if (!useGroq && AI_PROVIDER !== 'ollama') {
+      return res.status(500).json({
+        action: 'chat',
+        items: [],
+        reply: 'The AI provider configuration is invalid.',
+      })
+    }
+
+    const aiResponse = await fetch(
+      useGroq ? GROQ_API_URL : OLLAMA_URL,
+      {
         method: 'POST',
 
         headers: {
           'Content-Type': 'application/json',
+          ...(useGroq
+            ? { Authorization: `Bearer ${GROQ_API_KEY}` }
+            : {}),
         },
 
-        body: JSON.stringify({
-          model: MODEL,
-
-          stream: false,
-
-          format: 'json',
-
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-
-            {
-              role: 'user',
-              content: message.trim(),
-            },
-          ],
-
-          options: {
-            temperature: 0.2,
-          },
-        }),
-      })
+        body: JSON.stringify(
+          useGroq
+            ? {
+                model: GROQ_MODEL,
+                stream: false,
+                response_format: { type: 'json_object' },
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: message.trim() },
+                ],
+                temperature: 0.2,
+              }
+            : {
+                model: OLLAMA_MODEL,
+                stream: false,
+                format: 'json',
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: message.trim() },
+                ],
+                options: {
+                  temperature: 0.2,
+                },
+              }
+        ),
+      }
+    )
 
     // --------------------------------------------------------
-    // OLLAMA ERROR
+    // AI PROVIDER ERROR
     // --------------------------------------------------------
 
-    if (!ollamaResponse.ok) {
-      const errorText =
-        await ollamaResponse.text()
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text()
 
       console.error(
-        'Ollama error:',
+        `${AI_PROVIDER} error (${aiResponse.status}):`,
         errorText
       )
 
-      return res.status(500).json({
+      return res.status(502).json({
         action: 'chat',
         items: [],
         reply:
-          'My local AI is unavailable right now. Please make sure Ollama is running.',
+          'My AI assistant is temporarily unavailable. Please try again shortly.',
       })
     }
 
     // --------------------------------------------------------
-    // READ OLLAMA RESPONSE
+    // READ PROVIDER RESPONSE
     // --------------------------------------------------------
 
-    const data =
-      await ollamaResponse.json()
+    const data = await aiResponse.json()
 
-    const raw =
-      data?.message?.content || ''
+    const raw = useGroq
+      ? data?.choices?.[0]?.message?.content || ''
+      : data?.message?.content || ''
 
-    console.log(
-      '\nAI RAW RESPONSE:\n',
-      raw
-    )
+    console.log('\nAI RAW RESPONSE:\n', raw)
 
     // --------------------------------------------------------
     // PARSE JSON
@@ -833,7 +913,7 @@ Return ONLY JSON.
     // --------------------------------------------------------
 
     const cleanedResult =
-      cleanAIResult(result)
+      cleanAIResult(result, message)
 
     console.log(
       '\nAI CLEAN RESPONSE:\n',
@@ -890,7 +970,7 @@ app.get('/', (req, res) => {
 // START SERVER
 // ============================================================
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('')
   console.log('==========================================')
   console.log(' Basils & Brew AI server')
