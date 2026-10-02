@@ -8,6 +8,7 @@ const app = express()
 // Middleware: parse JSON requests and allow cross-origin requests
 app.use(cors())
 app.use(express.json())
+
 const PORT = Number(process.env.PORT) || 3001
 
 const AI_PROVIDER = process.env.AI_PROVIDER || 'ollama'
