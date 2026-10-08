@@ -6,8 +6,7 @@ const pastaMenu = [
     description: 'Garlic, olive oil, parsley, and a gentle chili finish.',
     price: 220,
     veg: true,
-    image:
-      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=900&q=80',
+    image: '/images/pasta/Aglio%20e%20Olio.jpeg',
   },
   {
     id: 102,
@@ -26,8 +25,7 @@ const pastaMenu = [
     description: 'Velvety parmesan cream sauce and fresh cracked pepper.',
     price: 260,
     veg: true,
-    image:
-      'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=900&q=80',
+    image: '/images/pasta/Alfredo.jpeg',
   },
   {
     id: 104,
@@ -46,8 +44,7 @@ const pastaMenu = [
     description: 'Creamy alfredo elevated with basil and truffle aroma.',
     price: 320,
     veg: true,
-    image:
-      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=900&q=80',
+    image: '/images/pasta/Basil%20Truffle%20Alfredo.jpeg',
   },
   {
     id: 106,
@@ -56,8 +53,7 @@ const pastaMenu = [
     description: 'Bright citrus butter sauce with fresh basil and herbs.',
     price: 280,
     veg: true,
-    image:
-      'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=900&q=80',
+    image: '/images/pasta/Lemon%20Basil%20Butter%20Pasta.jpeg',
   },
   {
     id: 107,

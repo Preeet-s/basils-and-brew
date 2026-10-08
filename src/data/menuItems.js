@@ -66,8 +66,8 @@ export const menuItems = [
     veg: true,
     tags: ['hot', 'classic'],
     description: 'Double espresso balanced with silky microfoam.',
-    image:
-      'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1000&q=85',
+        image: '/images/coffee/flat white.jpeg',
+
   },
 
   {
@@ -137,8 +137,7 @@ export const menuItems = [
     veg: true,
     tags: ['classic', 'spicy'],
     description: 'Garlic, olive oil, herbs and chilli tossed with pasta.',
-    image:
-      'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85',
+    image: '/images/pasta/Aglio%20e%20Olio.jpeg',
   },
 
   {
@@ -163,8 +162,7 @@ export const menuItems = [
     veg: true,
     tags: ['classic', 'creamy'],
     description: 'Creamy parmesan sauce wrapped around tender pasta.',
-    image:
-      'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=1000&q=85',
+    image: '/images/pasta/Alfredo.jpeg',
   },
 
   {
@@ -216,8 +214,7 @@ export const menuItems = [
     veg: true,
     tags: ['signature', 'creamy', 'basil'],
     description: 'Luxurious Alfredo elevated with basil and truffle.',
-    image:
-      'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1000&q=85',
+    image: '/images/pasta/Basil%20Truffle%20Alfredo.jpeg',
   },
 
   {
@@ -255,8 +252,7 @@ export const menuItems = [
     veg: true,
     tags: ['signature', 'basil'],
     description: 'Bright lemon, fragrant basil and silky butter.',
-    image:
-      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1000&q=85',
+    image: '/images/pasta/Lemon%20Basil%20Butter%20Pasta.jpeg',
   },
 
   {

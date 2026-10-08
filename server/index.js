@@ -4,8 +4,6 @@ import cors from 'cors'
 import fetch from 'node-fetch'
 
 const app = express()
-
-// Middleware: parse JSON requests and allow cross-origin requests
 app.use(cors())
 app.use(express.json())
 
