@@ -1,8 +1,17 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import fetch from 'node-fetch'
 
+// Load environment variables first
+dotenv.config()
+dotenv.config({ path: 'backend/.env' })
+
+// Load Supabase modules after environment setup
+const { supabaseAdmin } = await import('./supabaseAdmin.js')
+const { requireAuth } = await import('./authMiddleware.js')
+
+// Initialize Express
 const app = express()
 app.use(cors())
 app.use(express.json())
@@ -944,10 +953,223 @@ Return ONLY JSON.
 }
 
 // ============================================================
+// ORDER CREATION
+// ============================================================
+
+async function handleCreateOrder(req, res) {
+  try {
+    const {
+      items,
+      paymentMethod,
+      delivery,
+    } = req.body
+
+    // --------------------------------------------------------
+    // Validate cart
+    // --------------------------------------------------------
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        error: 'Your cart is empty.',
+      })
+    }
+
+    if (items.length > 20) {
+      return res.status(400).json({
+        error: 'Too many different products in one order.',
+      })
+    }
+
+    const validPaymentMethods = ['upi', 'card', 'cod']
+
+    if (!validPaymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({
+        error: 'Invalid payment method.',
+      })
+    }
+
+    // --------------------------------------------------------
+    // Validate products and quantities against real menu
+    // --------------------------------------------------------
+
+    const quantities = new Map()
+
+    for (const item of items) {
+      if (
+        typeof item.id !== 'string' ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > 20
+      ) {
+        return res.status(400).json({
+          error: 'Invalid product or quantity.',
+        })
+      }
+
+      const product = MENU.find(
+        (menuItem) => menuItem.id === item.id
+      )
+
+      if (!product) {
+        return res.status(400).json({
+          error: `Product "${item.id}" is not available.`,
+        })
+      }
+
+      const updatedQuantity =
+        (quantities.get(product.id) || 0) + item.quantity
+
+      if (updatedQuantity > 20) {
+        return res.status(400).json({
+          error: 'Maximum quantity per product is 20.',
+        })
+      }
+
+      quantities.set(product.id, updatedQuantity)
+    }
+
+    // --------------------------------------------------------
+    // Calculate prices on the server
+    // --------------------------------------------------------
+
+    const orderItems = [...quantities.entries()].map(
+      ([productId, quantity]) => {
+        const product = MENU.find(
+          (item) => item.id === productId
+        )
+
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          quantity,
+          unit_price: product.price,
+        }
+      }
+    )
+
+    const subtotal = orderItems.reduce(
+      (sum, item) =>
+        sum + item.unit_price * item.quantity,
+      0
+    )
+
+    const deliveryFee = 40
+    const taxes = Math.round(subtotal * 0.05)
+    const total = subtotal + deliveryFee + taxes
+
+    // --------------------------------------------------------
+    // Validate delivery information
+    // --------------------------------------------------------
+
+   
+const name = delivery?.name?.trim() || ''
+
+const phone = String(delivery?.phone ?? '')
+  .trim()
+  .replace(/[\s()-]/g, '')
+
+const street = delivery?.street?.trim() || ''
+const city = delivery?.city?.trim() || ''
+const postcode = delivery?.postcode?.trim() || ''
+
+// Validate each field separately
+if (name.length < 2 || name.length > 100) {
+  return res.status(400).json({
+    field: 'name',
+    error: 'Please enter a name between 2 and 100 characters.',
+  })
+}
+
+const validPhone =
+  /^(?:\+[1-9]\d{7,14}|[6-9]\d{9})$/.test(phone)
+
+if (!validPhone) {
+  return res.status(400).json({
+    field: 'phone',
+    error: 'Please enter a valid phone number. Include your country code for international numbers.',
+  })
+}
+
+if (street.length < 5 || street.length > 250) {
+  return res.status(400).json({
+    field: 'street',
+    error: 'Please enter a street address between 5 and 250 characters.',
+  })
+}
+
+if (city.length < 2 || city.length > 100) {
+  return res.status(400).json({
+    field: 'city',
+    error: 'Please enter a valid city name.',
+  })
+}
+
+if (!/^\d{6}$/.test(postcode)) {
+  return res.status(400).json({
+    field: 'postcode',
+    error: 'Please enter a valid 6-digit PIN code.',
+  })
+}
+
+
+    // --------------------------------------------------------
+    // Save order and items atomically in Supabase
+    // --------------------------------------------------------
+
+    const { data: orderId, error } =
+      await supabaseAdmin.rpc(
+        'create_order_with_items',
+        {
+          p_user_id: req.user.id,
+          p_total_amount: total,
+          p_payment_method: paymentMethod,
+          p_delivery_name: name,
+          p_delivery_phone: phone,
+          p_delivery_street: street,
+          p_delivery_city: city,
+          p_delivery_postcode: postcode,
+          p_items: orderItems,
+        }
+      )
+
+    if (error) {
+      console.error('ORDER DATABASE ERROR:', error)
+
+      return res.status(500).json({
+        error: 'Unable to save your order. Please try again.',
+      })
+    }
+
+    // --------------------------------------------------------
+    // Return confirmation
+    // --------------------------------------------------------
+
+    return res.status(201).json({
+      success: true,
+      orderId,
+      subtotal,
+      deliveryFee,
+      taxes,
+      total,
+      paymentStatus: 'test_pending',
+      orderStatus: 'pending',
+      message: 'Your demo order has been placed successfully.',
+    })
+  } catch (error) {
+    console.error('ORDER CREATION ERROR:', error)
+
+    return res.status(500).json({
+      error: 'Something went wrong while placing your order.',
+    })
+  }
+}
+
+// ============================================================
 // API ROUTES
 // ============================================================
 
 // Your frontend currently uses /chat.
+app.post('/api/orders', requireAuth, handleCreateOrder)
 app.post('/chat', handleChat)
 
 // Keep this route too, so the API remains compatible

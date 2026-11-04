@@ -65,6 +65,9 @@ export default function Navbar() {
           <Link to="/about" className="transition hover:text-[var(--basil)]">
             About
           </Link>
+          <Link to="/profile" className="transition hover:text-[var(--basil)]">
+            Account
+          </Link>
         </nav>
       </div>
     </header>

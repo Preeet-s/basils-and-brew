@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-
+// import { supabase } from './lib/supabase'
+import Profile from './pages/Profile'
 import AIConcierge from './components/ai/AIConcierge'
 import FloatingAIButton from './components/ai/FloatingAIButton'
 import SplashScreen from './components/SplashScreen'
@@ -19,6 +20,7 @@ import About from './pages/About'
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false)
   const [showSplash, setShowSplash] = useState(true)
+  // console.log('Supabase client:', supabase)
 
   return (
     <BrowserRouter>
@@ -41,6 +43,7 @@ export default function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/about" element={<About />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
 
           <BottomNav />
