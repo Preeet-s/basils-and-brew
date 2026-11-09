@@ -1151,7 +1151,7 @@ if (!/^\d{6}$/.test(postcode)) {
       deliveryFee,
       taxes,
       total,
-      paymentStatus: 'test_pending',
+      paymentStatus: 'Payment will not be collected during order, Please pay at the time of delivery',
       orderStatus: 'pending',
       message: 'Your demo order has been placed successfully.',
     })
